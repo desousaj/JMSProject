@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jre1.8.0_31">
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jre8">
 		<attributes>
 			<attribute name="owner.project.facets" value="java"/>
 		</attributes>
@@ -13,9 +13,9 @@
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jst.j2ee.internal.web.container"/>
 	<classpathentry kind="con" path="org.eclipse.jst.j2ee.internal.module.container"/>
-	<classpathentry kind="lib" path="C:/java/server/wildfly-8.2.0.Final/standalone/deployments/EJBInscription.jar"/>
-	<classpathentry kind="lib" path="C:/java/server/wildfly-8.2.0.Final/bin/client/jboss-cli-client.jar"/>
-	<classpathentry kind="lib" path="C:/java/server/wildfly-8.2.0.Final/bin/client/jboss-client.jar"/>
+	<classpathentry kind="lib" path="C:/server/wildfly-8.2.0.Final/standalone/deployments/EJBInscription.jar"/>
+	<classpathentry kind="lib" path="C:/server/wildfly-8.2.0.Final/bin/client/jboss-cli-client.jar"/>
+	<classpathentry kind="lib" path="C:/server/wildfly-8.2.0.Final/bin/client/jboss-client.jar"/>
 	<classpathentry kind="src" path="/EJBInscription"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>

@@ -146,16 +146,16 @@ public class Inscription  implements  Serializable
 			while (index < rs.size()) {
 				Inscription dmdInsc = new Inscription();
 
-				dmdInsc.setNomcandidat(rs.get(index + 0).toString());
-				dmdInsc.setPrenoncandidat(rs.get(index + 1).toString());
+				dmdInsc.setNomcandidat(rs.get(index + 1).toString());
+				dmdInsc.setPrenoncandidat(rs.get(index + 2).toString());
 				DateFormat dateFormatpers = new SimpleDateFormat("yyyy-MM-dd");
 
-				dmdInsc.setDatenaissance(dateFormatpers.parse(rs.get(index + 2)
+				dmdInsc.setDatenaissance(dateFormatpers.parse(rs.get(index + 3)
 						.toString()));
-				dmdInsc.setAdresse(rs.get(index + 3).toString());
-				dmdInsc.setCpostal(rs.get(index + 4).toString());
-				dmdInsc.setVille(rs.get(index + 5).toString());
-				index = index + 6;
+				dmdInsc.setAdresse(rs.get(index + 4).toString());
+				dmdInsc.setCpostal(rs.get(index + 5).toString());
+				dmdInsc.setVille(rs.get(index + 6).toString());
+				index = index + 7;
 				listeDmdInscription.add(dmdInsc);
 			}
 
