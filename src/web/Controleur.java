@@ -1,85 +1,93 @@
 package web;
 
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
-import java.util.Locale;
-import java.util.logging.Logger;
 
-import javax.ejb.EJB;
-import javax.jms.Connection;
-import javax.jms.ConnectionFactory;
-import javax.jms.Destination;
-import javax.jms.JMSException;
-import javax.jms.MessageProducer;
+import javax.annotation.Resource;
 import javax.jms.ObjectMessage;
 import javax.jms.Session;
-import javax.naming.Context;
-import javax.naming.NamingException;
-import javax.servlet.RequestDispatcher;
+import javax.jms.Topic;
+import javax.jms.TopicConnection;
+import javax.jms.TopicConnectionFactory;
+import javax.jms.TopicPublisher;
+import javax.jms.TopicSession;
 import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import meserreurs.MonException;
 import metier.Inscription;
-import ejb.DemandeInscriptionTopic;
 
+/**
+ * Definition of the two JMS destinations used by the quickstart (one queue and
+ * one topic).
+ */
+/*
+ @JMSDestinationDefinitions
+ (value = {
+ @JMSDestinationDefinition(
+ name = "java:jboss/exported/topic/DemandeInscriptionJmsTopic", 
+ interfaceName = "javax.jms.Topic", 
+ destinationName = "DemandeInscriptionJmsTopic")
+
+ }
+
+ )
+ */
+/**
+ * Servlet implementation class Traitement
+ */
 @WebServlet("/Controleur")
 public class Controleur extends HttpServlet {
+	private static final long serialVersionUID = 10L;
+	private static final String ACTION_TYPE = "action";
+	private static final String AFFICHER_INSCRIPTION = "afficheInscriptions";
+	private static final String AJOUTER_INSCRIPTION = "ajouteInscription";
+	private static final String ENVOI_INSCRIPTION = "envoiInscription";
+	private static final String RETOUR_ACCUEIL = "Retour";
+
+	/**
+	 * @see HttpServlet#HttpServlet()
+	 */
+
+	@Resource(lookup = "java:jboss/exported/topic/DemandeInscriptionJmsTopic")
+	private Topic topic;
+	// On accède à l'EJB
+
+	@Resource(mappedName = "java:/ConnectionFactory")
+	private TopicConnectionFactory cf;
+
+	// Session établie avec le serveur
+	private TopicSession session = null;
+
+	// Le client utilise un Producteur de messsage pour envoyer une demande de
+	// formation
+	private TopicPublisher producer;
+
+	/**
+	 * Constructeur par défaut de la classe
+	 */
+	public Controleur() {
+		super();
+	}
+
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 1L;
-
-	private static final String ACTION_TYPE = "action";
-
-	// Action sur les stages
-	private static final String ENVOI_INSCRIPTION = "envoiInscription";
-	private static final String AJOUTE_INSCRIPTION = "ajouteInscription";
-	private static final String AFFICHE_INSCRIPTION = "afficheInscriptions";
-
-	private static final Logger log = Logger.getLogger(Controleur.class
-			.getName());
-
-	// Set up all the default values
-
-	private static final String DEFAULT_CONNECTION_FACTORY = "jms/RemoteConnectionFactory";
-	private static final String DEFAULT_DESTINATION = "java:/jms/topic/DemandeInscriptionJmsTopic";
-
-	private static final String DEFAULT_USERNAME = "jmsuser";
-	private static final String DEFAULT_PASSWORD = "jmsepul98!";
-
-	@EJB(lookup = DEFAULT_DESTINATION)
-	private DemandeInscriptionTopic unEjbInscription = null;
-
-	private Context ctx;
-
-	private static String getLookupNom() {
-		/*
-		 * appname désigne le nom de l'EAR qui es déployé. Le suffixe ear est
-		 * absent. Ce nom peut être laissé vide mais il est préférable de le
-		 * renseigner
-		 */
-		String appName = "";
-		/*
-		 * modulename désigne le nom du JAR dans le quel l'EJB est encapsulé.
-		 */
-		String moduleName = "";
-		/*
-		 * ce nom n'est pas renseigné
-		 */
-		String distinctName = "";
-		// Le nom de la classe Bean de l'EJB
-		String beanName = Inscription.class.getSimpleName();
-		// on crée la chaîne pour former le nom de la recherche
-		String nom = "ejb:" + appName + "/" + moduleName + "/" + distinctName
-				+ "/" + beanName + "!";
-		return nom;
+	@Override
+	protected void doGet(HttpServletRequest request,
+			HttpServletResponse response) throws ServletException, IOException {
+		System.out.println("fgjrekhgrekuhgrekhgkrehghregreljgjrejgre");
+		try {
+			TraiteRequete(request, response);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -89,154 +97,166 @@ public class Controleur extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-		try {
-			System.out.println("firefoiheehghreghreihghreigfrejifjriejfgr");
-			// on appelle l'EJB
-			ctx = JBossContext.getInitialContext();
-			String nom = getLookupNom();
-			unEjbInscription = (DemandeInscriptionTopic) ctx.lookup(nom);
-		} catch (NamingException ne) {
-			request.setAttribute("MesErreurs", ne.getMessage());
-			unEjbInscription.EcritureErreur("Impossible de récupérer l'EJB...");
-		}
-		try {
-			processusTraiteRequete(request, response);
-		} catch (Exception e) {
-			String destinationPage = "/Erreur.jsp";
-			unEjbInscription
-					.EcritureErreur("Impossible de traiter la requête : "
-							+ e.getMessage());
-			request.setAttribute("MesErreurs", e.getMessage());
-			RequestDispatcher dispatcher = request.getServletContext()
-					.getRequestDispatcher(destinationPage);
-			dispatcher.forward(request, response);
-		}
-	}
-
-	// L'appel de cette procédure se fait avec :
-
-	@Override
-	protected void doGet(HttpServletRequest request,
-			HttpServletResponse response) throws ServletException, IOException {
+		System.out.println("klfjrlikfjergrekgjrelmjgmlrekjgmlorjeolmgjremlo");
 		// TODO Auto-generated method stub
 		try {
-			System.out.println("firefoiheehghreghreihghreigfrejifjriejfgr");
-
-			processusTraiteRequete(request, response);
+			TraiteRequete(request, response);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+
 	}
 
-	protected void processusTraiteRequete(HttpServletRequest request,
-			HttpServletResponse response) throws ServletException, IOException,
-			NamingException, JMSException, ParseException {
-
-		String destinationPage = "";
+	/**
+	 * Procédure principale de démarrage
+	 */
+	public void TraiteRequete(ServletRequest request, ServletResponse response)
+			throws ServletException, IOException {
+		// On récupère l'action
 		String actionName = request.getParameter(ACTION_TYPE);
-		// execute l'action
-		switch (actionName) {
-		case AJOUTE_INSCRIPTION:
-			destinationPage = "/PostMessage.jsp";
-			break;
-		case AFFICHE_INSCRIPTION:
+
+		// Si on veut afficher l'ensemble des demandes d'inscription
+		if (AJOUTER_INSCRIPTION.equals(actionName)) {
+
+			request.getRequestDispatcher("PostMessage.jsp").forward(request,
+					response);
+
+		} else
+
+		if (AFFICHER_INSCRIPTION.equals(actionName)) {
+
+			Inscription unedemande = new Inscription();
+			ArrayList<Inscription> listeDmdInscription;
+
 			try {
-				Inscription ins = new Inscription();
-				request.setAttribute("liste", ins.recupererDmdInscription());
-				destinationPage = "/AfficherInscriptions.jsp";
-			} catch (MonException e) {
-				unEjbInscription
-						.EcritureErreur("Impossible de récuperer la liste d'inscription ! ");
-				destinationPage = "/AfficherInscriptions.jsp";
+				// On récupère la liste des demandes d'inscription
+				listeDmdInscription = unedemande.recupererDmdInscription();
+				// On fixe l'attribut correspondant à cette liste
+				request.setAttribute("listeDmdInscription", listeDmdInscription);
+				// On fixe l'attribut correspondant au nombre total de demandes
+				// d'inscription
+				request.setAttribute("nbInscription",
+						listeDmdInscription.size());
+				this.getServletContext()
+						.getRequestDispatcher("/AfficheInscriptions.jsp")
+						.include(request, response);
+			} catch (Exception e) {
+				// On passe l'erreur à la page JSP
+				System.out.println("Erreur client  :" + e.getMessage());
+				request.setAttribute("MesErreurs", e.getMessage());
+				request.getRequestDispatcher("Affichage.jsp").forward(request,
+						response);
 			}
-			break;
-		case ENVOI_INSCRIPTION:
-			Inscription ins = new Inscription();
-			ins.setAdresse(request.getParameter("adresse"));
-			ins.setCpostal(request.getParameter("cpostal"));
 
-			String date = request.getParameter("datenaissance");
-			Date result = parseDate(date);
-
-			ins.setDatenaissance(result);
-			ins.setNomcandidat(request.getParameter("nom"));
-			ins.setPrenoncandidat(request.getParameter("prenom"));
-			ins.setVille(request.getParameter("ville"));
-			sendInscription(ins);
-			destinationPage = "/AfficherInscriptions.jsp";
-			break;
+		} else if (RETOUR_ACCUEIL.equals(actionName)) {
+			this.getServletContext().getRequestDispatcher("/index.jsp")
+					.include(request, response);
 		}
 
-		RequestDispatcher dispatcher = request.getServletContext()
-				.getRequestDispatcher(destinationPage);
-		dispatcher.forward(request, response);
+		else if (ENVOI_INSCRIPTION.equals(actionName))
+
+		{
+			SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+			response.setContentType("text/html;charset=UTF-8");
+			response.setContentType("text/html;charset=UTF-8");
+
+			// On récupère le nom et le prénom saisis
+			String nom = request.getParameter("nom");
+			String prenom = request.getParameter("prenom");
+
+			if ((nom != null) && (prenom != null)) {
+				try {
+					// On récupère la valeur des autres champs saisis par
+					// l'utilisateur
+					String datenaissance = request
+							.getParameter("datenaissance");
+					Date unedate = sdf.parse(datenaissance);
+					String chn = unedate.toString();
+					String adresse = request.getParameter("adresse");
+					String cpostal = request.getParameter("cpostal");
+					String ville = request.getParameter("ville");
+
+					// On crée une demande d'inscription avec ces valeurs
+					Inscription unedemande = new Inscription();
+					unedemande.setNomcandidat(nom);
+					unedemande.setPrenoncandidat(prenom);
+					unedemande.setDatenaissance(unedate);
+					unedemande.setAdresse(adresse);
+					unedemande.setCpostal(cpostal);
+					unedemande.setVille(ville);
+
+					// On envoie cette demande d'inscription dans le topic
+					boolean ok = envoi(unedemande);
+
+					// On retourne à la page d'accueil
+					this.getServletContext().getRequestDispatcher("/index.jsp")
+							.include(request, response);
+				} catch (Exception e) {
+					// On passe l'erreur à la page JSP
+					System.out.println("Erreur client  :" + e.getMessage());
+					request.setAttribute("MesErreurs", e.getMessage());
+					request.getRequestDispatcher("PostMessage.jsp").forward(
+							request, response);
+				} /*
+				 * catch (Exception e) {
+				 * System.out.println("Erreur client Exception   :" +
+				 * e.getMessage()); request.setAttribute("MesErreurs",
+				 * e.getMessage());
+				 * 
+				 * request.getRequestDispatcher("PostMessage.jsp").forward(
+				 * request, response); }
+				 */
+
+			}
+		}
 	}
 
-	private Date parseDate(String date) throws ParseException {
-		DateFormat df = new SimpleDateFormat("MMM dd yyyy", Locale.FRENCH);
-		Date result = df.parse(date);
-		return result;
-	}
+	/**
+	 * Permet de publier une demande d'inscription dans le topic
+	 * 
+	 * @param unedemande
+	 *            La demande d'inscription à publier
+	 * @return
+	 * @throws Exception
+	 */
+	boolean envoi(Inscription unedemande) throws Exception {
 
-	@SuppressWarnings("null")
-	private void sendInscription(Inscription ins) throws NamingException,
-			JMSException {
+		TopicConnection connection = null;
 
-		ConnectionFactory connectionFactory = null;
-		Connection connection = null;
-		Session session = null;
-		ObjectMessage objectMessage = null;
-		MessageProducer producer = null;
-		Destination destination;
 		try {
-			// On charge le contexte pour une recherche dans l'annuaire JNDI
-			ctx = JBossContext.getInitialContext();
-			// On construit l'environnemenent à partir
-			// des recherches JNDI
-			String connectionFactoryString = System.getProperty(
-					"connection.factory", DEFAULT_CONNECTION_FACTORY);
-			log.info("Attempting to acquire connection factory \""
-					+ connectionFactoryString + "\"");
-			connectionFactory = (ConnectionFactory) ctx
-					.lookup(connectionFactoryString);
-			log.info("Found connection factory \"" + connectionFactoryString
-					+ "\" in JNDI");
-
-			// Destination
-			String destinationString = System.getProperty("destination",
-					DEFAULT_DESTINATION);
-			log.info("Attempting to acquire destination \"" + destinationString
-					+ "\"");
-			destination = (Destination) ctx.lookup(destinationString);
-			log.info("Found destination \"" + destinationString + "\" in JNDI");
 
 			// On crée la connexion JMS , session, producteur et message;
-			connection = connectionFactory.createConnection(
-					System.getProperty("username", DEFAULT_USERNAME),
-					System.getProperty("password", DEFAULT_PASSWORD));
-			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-			objectMessage = session.createObjectMessage(ins);
-			connection.start();
-			producer.send(objectMessage);
-		} catch (JMSException e) {
-			log.severe(e.getMessage());
-			throw e;
-		} catch (NamingException e) {
-			log.severe(e.getMessage());
-			throw e;
-		} catch (Exception e) {
-			log.severe(e.getMessage());
-			throw e;
-		} finally {
-			if (ctx != null) {
-				ctx.close();
-			}
+			/*
+			 * connection = connectionFactory.createConnection(
+			 * System.getProperty("username", DEFAULT_USERNAME),
+			 * System.getProperty("password", DEFAULT_PASSWORD));
+			 */
 
-			// closing the connection takes care of the session, producer, and
-			// consumer
+			// Création Connection et Session JMS
+			connection = cf.createTopicConnection();
+			session = connection.createTopicSession(false,
+					Session.AUTO_ACKNOWLEDGE);
+
+			// On crée le producteur utilisé pour envoyer un message
+			producer = session.createPublisher(topic);
+			// On lance la connection
+			connection.start();
+			ObjectMessage message = session.createObjectMessage();
+			message.setObject(unedemande);
+
+			// On publie le message
+			producer.publish(message);
+			producer.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			// Fermeture de la connection , Sinon Jboss Messaging pas content.
 			if (connection != null) {
+				session.close();
 				connection.close();
 			}
 		}
+		return true;
 	}
+
 }
